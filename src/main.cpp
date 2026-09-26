@@ -37,7 +37,7 @@ INITIALIZE_PLUGIN() {
     gNUSspliActive.store(false);
     const auto status = FunctionPatcher_InitLibrary();
     if (status != FUNCTION_PATCHER_RESULT_SUCCESS) {
-        OSReport("[NUSBG] FunctionPatcherModule unavailable: %d\\n", status);
+        OSReport("[NUSBG] FunctionPatcherModule unavailable: %d\n", status);
     } else {
         InstallNUSspliHook();
     }

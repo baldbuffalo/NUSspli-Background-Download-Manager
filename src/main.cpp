@@ -2,6 +2,8 @@
 
 #include <coreinit/title.h>
 #include <wups.h>
+#include <wups/config.h>
+#include <coreinit/debug.h>
 #include <wut.h>
 #include <function_patcher/function_patching.h>
 

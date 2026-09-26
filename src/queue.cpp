@@ -8,7 +8,7 @@ std::mutex gQueueMutex;
 std::vector<nusbg::DownloadTask> gQueue;
 
 bool IsValid(const nusbg::DownloadTask& task) {
-    return task.task_id != 0 && task.title_id != 0 && task.tmd_url[0] != '\0';
+    return task.task_id != 0 && task.title_id != 0;
 }
 }
 

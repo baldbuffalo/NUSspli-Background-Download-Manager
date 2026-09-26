@@ -3,23 +3,22 @@
 #include <coreinit/debug.h>
 #include <coreinit/dynload.h>
 #include <cstdint>
-#include <cstring>
 
 namespace {
 
 struct TitlePackageTaskConfig {
-    uint32_t title_id_high;
-    uint32_t title_id_low;
-    uint32_t region_or_language;
-    uint8_t title_type;
-    uint8_t device1;
-    uint8_t unknown_0e;
-    uint8_t device2;
-    uint32_t unknown_10;
-    uint8_t unknown_14;
-    uint8_t unknown_15;
-    uint8_t post_download_action;
-    uint8_t unknown_17;
+    uint32_t titleIdHigh;                 // 0x00
+    uint32_t titleIdLow;                  // 0x04
+    uint32_t regionOrLanguageRelated;     // 0x08
+    uint8_t titleType;                    // 0x0C
+    uint8_t applicationBoxDevice1;        // 0x0D
+    uint8_t unknown0E;                    // 0x0E
+    uint8_t applicationBoxDevice2;        // 0x0F
+    uint32_t unknown10;                   // 0x10
+    uint8_t unknown14;                    // 0x14
+    uint8_t unknown15;                    // 0x15
+    uint8_t postDownloadAction;           // 0x16
+    uint8_t unknown17;                    // 0x17
 };
 
 static_assert(sizeof(TitlePackageTaskConfig) == 0x18, "TitlePackageTaskConfig must be 0x18 bytes");
@@ -77,7 +76,9 @@ void HandoffQueuedDownloads() {
         return;
     }
 
-    // The native task API expects a UTF-16 display name and its character count.
+    // This matches Cemu's nn_nim TitlePackageTaskConfig ABI:
+    // 0x18 bytes, title ID at 0x00, title type at 0x0C,
+    // device fields at 0x0D/0x0F, and post-download action at 0x16.
     static const uint16_t kTaskName[] = {
         'N','U','S','s','p','l','i',' ','D','o','w','n','l','o','a','d',0
     };
@@ -88,11 +89,18 @@ void HandoffQueuedDownloads() {
         }
 
         TitlePackageTaskConfig config{};
-        // TitleType 0 is the normal/base Wii U title type.
-        gMakeConfig(&config, task.title_id, task.region, 0);
 
-        const int32_t result =
-            gRegisterTask(&config, kTaskName, 16);
+        // Cemu's implementation of the native constructor receives:
+        //   TitlePackageTaskConfig* output
+        //   uint64_t titleId
+        //   uint32_t region/language (currently ignored by Cemu)
+        //   uint32_t TitleType
+        //
+        // Its implementation initializes the remaining fields itself,
+        // including the MLC device fields and background-install policy.
+        gMakeConfig(&config, task.title_id, 0, 0);
+
+        const int32_t result = gRegisterTask(&config, kTaskName, 16);
 
         if (result == 0) {
             RemoveDownload(task.task_id);

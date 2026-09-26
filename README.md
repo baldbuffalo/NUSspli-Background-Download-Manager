@@ -1,60 +1,87 @@
 # NUSspli Background Download Manager
 
-An Aroma plugin for Wii U designed to bridge NUSspli downloads to the Wii U's native Download Management system when NUSspli exits.
+A Wii U Aroma/WUPS plugin that queues actual NUSspli download selections and hands them to the Wii U's native NIM/Download Management system only after NUSspli exits.
 
-## Intended behavior
+NUSspli is an open-source Wii U application whose normal downloader runs directly against Nintendo's update servers. urlNUSspli source repositoryhttps://github.com/V10lator/NUSspli
 
-1. Starting NUSspli by itself does nothing.
-2. The plugin watches for an actual NUSspli download.
-3. When NUSspli starts a download, NUSspli sends the download metadata to this plugin.
-4. The plugin stores the download information but does **not** start the Wii U Download Manager yet.
-5. NUSspli continues using its normal downloader while it remains open.
-6. When NUSspli exits, the plugin detects that NUSspli has closed.
-7. The plugin submits the stored download information to the Wii U's native Download Management service.
-8. The Wii U then owns and continues the download independently of NUSspli.
+## Runtime flow
 
-## Important design requirement
+1. NUSspli launches: no queue entry is created.
+2. NUSspli enters an actual title download: a tiny NUSspli-side publisher writes a task record.
+3. The plugin notices that record while NUSspli is running and moves it into an in-memory queue.
+4. NUSspli's normal downloader continues unchanged.
+5. The plugin does **not** register an NIM task while NUSspli is open.
+6. NUSspli exits: `ON_APPLICATION_ENDS()` runs.
+7. The plugin calls `nn_nim.rpl` and registers each queued title-package task.
+8. Native Download Management owns the task after handoff.
 
-The plugin must not create a second active downloader while NUSspli is still running. The plugin is a queue/handoff layer, not a replacement HTTP downloader.
+WUPS supports replacing SDK/RPL functions for a selected target process, which is why the plugin uses a ROOT_RPX `OSYieldThread` hook for lightweight queue polling instead of trying to patch NUSspli's private downloader by a guessed instruction address. urlWUPS function-hook documentationhttps://wiiu-env.github.io/WiiUPluginSystem/dev_plugin_hooks
 
-## Project status
+## Files
 
-Initial repository setup. The next implementation step is identifying the exact Wii U native Download Management/NIM interface used by the system, then building the minimal Aroma plugin around that interface.
-
-## Planned structure
-
-- `src/` — Aroma/WUPS plugin implementation
-- `include/` — public/internal headers
-- `libs/` — any required Wii U support code
-- `docs/` — reverse-engineering notes and protocol/API documentation
-- `.github/workflows/` — build workflow
+- `src/main.cpp` — NUSspli lifecycle detection and final handoff.
+- `src/nusspli_queue.cpp` — consumes task records written by the NUSspli integration.
+- `src/nusspli_hook.cpp` — ROOT_RPX polling hook.
+- `src/nim_handoff.cpp` — native NIM task registration.
+- `include/nusspli_bg_bridge.h` — task-record wire format.
+- `patches/nusspli_bg_publish.c` — source file to add to a NUSspli build.
+- `docs/` — implementation notes.
 
 ## NUSspli integration
 
-NUSspli will eventually need a small integration point that sends an actual download task to the plugin. No message is sent merely because NUSspli was launched.
+The plugin repository contains the publisher implementation, but **NUSspli itself must be rebuilt with that publisher and one call at the start of its existing `downloadTitle()` function**.
 
-The integration should carry enough information for the native Download Management task to reproduce the requested download.
+The call should pass:
 
-## Handoff state
+- task ID
+- `tmd->tid`
+- `tmd->title_version`
+- `toUSB`
+- `inst`
 
-The plugin should track each task separately:
+The publisher uses a temporary file followed by rename, so the plugin never intentionally consumes a partially written record.
+
+NUSspli's current downloader signature and TMD fields are present in its public source. urlNUSspli downloader sourcehttps://github.com/V10lator/NUSspli/blob/master/src/downloader.c urlNUSspli TMD definitionshttps://github.com/V10lator/NUSspli/blob/master/include/tmd.h
+
+## Native NIM side
+
+The project resolves:
+
+- `MakeTitlePackageTaskConfigAutoUsingBgInstallPolicy`
+- `RegisterTitlePackageTask`
+
+WUT exposes those NIM symbols in its Wii U SDK definitions. urlWUT repositoryhttps://github.com/devkitPro/wut
+
+The 0x18-byte task configuration layout follows the public Cemu reverse-engineering implementation. Cemu documents the device fields as part of the task configuration, but its implementation is not the retail Wii U implementation, so the real-console behavior is explicitly a test point.
+
+## What is still experimentally unverified
+
+These are the exact things to check on the real Wii U:
+
+1. **NIM function ABI:** the exported symbol names are confirmed, but the exact retail return/error behavior of the dynamically resolved calls has not been verified on a real console.
+2. **TitleType enum:** the adapter currently supplies the neutral value `0`. If NIM rejects the task, this is the first value to investigate.
+3. **Destination device:** NUSspli's `toUSB` flag is carried through the queue, but the retail meaning of the two config device bytes needs real-console verification.
+4. **Ticket/content discovery:** the registration currently gives NIM no explicit content-ID array. NIM may obtain the package metadata itself, or the retail implementation may require more information.
+5. **NUSspli polling:** the `OSYieldThread` hook is deliberately conservative, but filesystem access from that hook needs real-console testing.
+6. **Exit timing:** if `ON_APPLICATION_ENDS` occurs too early for the native registration call on a particular Aroma/WUPS build, the handoff may need to move to the application-closed status hook.
+7. **Multiple tasks:** the queue supports 32 records, but real NIM duplicate-task behavior needs testing.
+
+## Safe first test
+
+Use a title/homebrew item you are authorized to download. First verify that simply launching and exiting NUSspli produces **no NUSBG task-registration log**. Then test one real download and watch the debug log for:
 
 ```
-IDLE
-  ↓
-NUSspli starts an actual download
-  ↓
-QUEUED
-  ↓
-NUSspli remains open → wait
-  ↓
-NUSspli exits
-  ↓
-HANDOFF
-  ↓
-Native Download Management
+[NUSBG] Native task registered for ...
 ```
 
-## Goal
+If NIM rejects it, keep the error code. That code is the most useful information for correcting the remaining ABI/configuration uncertainty.
 
-Make NUSspli downloads continue through the Wii U's official Download Management after the user closes NUSspli, without changing NUSspli's normal download behavior while it is open.
+## Build
+
+Requires the Wii U devkitPro toolchain with WUT/WUPS/WUMS.
+
+```
+make
+```
+
+The resulting `.wps` belongs in the Aroma plugin directory on the SD card.

@@ -3,6 +3,7 @@
 #include <coreinit/title.h>
 #include <wups.h>
 #include <wut.h>
+#include <function_patcher/function_patching.h>
 
 #include <atomic>
 
@@ -20,7 +21,7 @@ bool IsNUSspli() {
 
 WUPS_PLUGIN_NAME("NUSspli Background Download Manager");
 WUPS_PLUGIN_DESCRIPTION("Queues NUSspli downloads and hands them to native Download Management after NUSspli exits");
-WUPS_PLUGIN_VERSION("0.4.0");
+WUPS_PLUGIN_VERSION("0.5.0");
 WUPS_PLUGIN_AUTHOR("baldbuffalo");
 WUPS_PLUGIN_LICENSE("GPL-3.0");
 
@@ -32,6 +33,10 @@ WUPS_USE_WUT_DEVOPTAB();
 
 INITIALIZE_PLUGIN() {
     gNUSspliActive.store(false);
+    const auto status = FunctionPatcher_InitLibrary();
+    if (status != FUNCTION_PATCHER_RESULT_SUCCESS) {
+        OSReport("[NUSBG] FunctionPatcherModule unavailable: %d\\n", status);
+    }
 }
 
 ON_APPLICATION_START() {

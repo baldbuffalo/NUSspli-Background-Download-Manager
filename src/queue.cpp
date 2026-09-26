@@ -40,6 +40,17 @@ void ClearQueue() {
     gQueue.clear();
 }
 
+bool RemoveDownload(uint64_t task_id) {
+    std::lock_guard<std::mutex> lock(gQueueMutex);
+    for (auto it = gQueue.begin(); it != gQueue.end(); ++it) {
+        if (it->task_id == task_id) {
+            gQueue.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
 std::size_t GetQueueSize() {
     std::lock_guard<std::mutex> lock(gQueueMutex);
     return gQueue.size();

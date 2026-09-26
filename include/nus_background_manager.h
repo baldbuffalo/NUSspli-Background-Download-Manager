@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace nusbg {
 
@@ -31,6 +32,9 @@ enum class QueueResult : int32_t {
 QueueResult QueueDownload(const DownloadTask& task);
 void ClearQueue();
 std::size_t GetQueueSize();
+
+std::vector<DownloadTask> SnapshotQueue();
+void ReplaceQueue(const std::vector<DownloadTask>& tasks);
 
 void HandoffQueuedDownloads();
 

@@ -3,7 +3,6 @@
 #include <function_patcher/function_patching.h>
 #include <coreinit/debug.h>
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -12,7 +11,7 @@ namespace {
 
 constexpr uint64_t kNUSspliTitleId = 0x0005000010155373ULL;
 const uint64_t kTargetTitleIds[] = { kNUSspliTitleId };
-std::atomic<uint64_t> gNextTaskId{1};
+uint64_t gNextTaskId = 1;
 PatchedFunctionHandle gDownloadTitlePatch = 0;
 
 uint64_t ReadTitleId(const void *tmd) {
@@ -30,9 +29,9 @@ uint16_t ReadTitleVersion(const void *tmd) {
 }
 
 uint64_t NewTaskId() {
-    uint64_t id = gNextTaskId.fetch_add(1);
+    uint64_t id = gNextTaskId++;
     if (id == 0) {
-        id = gNextTaskId.fetch_add(1);
+        id = gNextTaskId++;
     }
     return id;
 }

@@ -8,40 +8,33 @@
 
 namespace {
 
-constexpr uint64_t kNUSspliTitleIdEUR = 0x00050000101C9500ULL;
-constexpr uint64_t kNUSspliTitleIdUSA = 0x00050000101C9400ULL;
-constexpr uint64_t kNUSspliTitleIdJPN = 0x00050000101C9300ULL;
+constexpr uint64_t kNUSspliTitleId = 0x0005000010155373ULL;
 
 std::atomic_bool gNUSspliActive{false};
 
 bool IsNUSspli() {
-    const uint64_t titleId = OSGetTitleID();
-    return titleId == kNUSspliTitleIdEUR ||
-           titleId == kNUSspliTitleIdUSA ||
-           titleId == kNUSspliTitleIdJPN;
-}
-
-void ResetRuntimeState() {
-    gNUSspliActive.store(false);
-    nusbg::ClearQueue();
+    return OSGetTitleID() == kNUSspliTitleId;
 }
 
 } // namespace
 
 WUPS_PLUGIN_NAME("NUSspli Background Download Manager");
-WUPS_PLUGIN_DESCRIPTION("Queues NUSspli downloads for native Download Management after NUSspli exits");
-WUPS_PLUGIN_VERSION("0.3.0");
+WUPS_PLUGIN_DESCRIPTION("Queues NUSspli downloads and hands them to native Download Management after NUSspli exits");
+WUPS_PLUGIN_VERSION("0.4.0");
 WUPS_PLUGIN_AUTHOR("baldbuffalo");
 WUPS_PLUGIN_LICENSE("GPL-3.0");
 
+WUPS_FS_ACCESS();
+WUPS_USE_WUT_MALLOC();
+WUPS_USE_WUT_NEWLIB();
+WUPS_USE_WUT_STDCPP();
 WUPS_USE_WUT_DEVOPTAB();
 
 INITIALIZE_PLUGIN() {
-    ResetRuntimeState();
+    gNUSspliActive.store(false);
 }
 
 ON_APPLICATION_START() {
-    ResetRuntimeState();
     gNUSspliActive.store(IsNUSspli());
 }
 
@@ -50,7 +43,7 @@ ON_APPLICATION_ENDS() {
         return;
     }
 
-    // This is the last application lifecycle callback. NUSspli has stopped
-    // its normal downloader before this handoff is performed.
+    // NUSspli's actual application-end hook is the handoff point. We do not
+    // start native tasks while NUSspli is still running.
     nusbg::HandoffQueuedDownloads();
 }

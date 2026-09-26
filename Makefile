@@ -36,7 +36,7 @@ CFLAGS += -DDEBUG -DVERBOSE_DEBUG -g
 CXXFLAGS += -DDEBUG -DVERBOSE_DEBUG -g
 endif
 
-LIBS := -lwups -lwut
+LIBS := -lwups -lwut -lfunctionpatcher
 LIBDIRS := $(PORTLIBS) $(WUPS_ROOT) $(WUT_ROOT) $(WUMS_ROOT)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))

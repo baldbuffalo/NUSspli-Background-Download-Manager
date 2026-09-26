@@ -21,6 +21,12 @@ QueueResult QueueDownload(const DownloadTask& task) {
 
     std::lock_guard<std::mutex> lock(gQueueMutex);
 
+    for (const auto& queued : gQueue) {
+        if (queued.task_id == task.task_id) {
+            return QueueResult::Ok;
+        }
+    }
+
     if (gQueue.size() >= kMaxQueuedDownloads) {
         return QueueResult::QueueFull;
     }

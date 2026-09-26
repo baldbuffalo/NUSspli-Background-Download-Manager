@@ -1,0 +1,23 @@
+name: Build Wii U plugin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build with Wii U toolchain
+        run: |
+          docker build -t nusbg-builder .
+          docker run --rm -v "$PWD:/project" nusbg-builder make
+
+      - name: Upload WPS
+        uses: actions/upload-artifact@v4
+        with:
+          name: NUSspliBackgroundDownloadManager
+          path: NUSspliBackgroundDownloadManager.wps

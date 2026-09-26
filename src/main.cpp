@@ -16,6 +16,7 @@ namespace {
 constexpr uint64_t kNUSspliTitleId = 0x0005000010155373ULL;
 
 std::atomic_bool gNUSspliActive{false};
+std::atomic_bool gHandoffPending{false};
 
 bool IsNUSspli() {
     return OSGetTitleID() == kNUSspliTitleId;
@@ -25,23 +26,32 @@ bool IsNUSspli() {
 
 WUPS_PLUGIN_NAME("NUSspli Background Download Manager");
 WUPS_PLUGIN_DESCRIPTION("Queues NUSspli downloads and hands them to native Download Management after NUSspli exits");
-WUPS_PLUGIN_VERSION("0.5.0");
+WUPS_PLUGIN_VERSION("0.6.0");
 WUPS_PLUGIN_AUTHOR("baldbuffalo");
 WUPS_PLUGIN_LICENSE("GPL-3.0");
 
-
 INITIALIZE_PLUGIN() {
     gNUSspliActive.store(false);
+    gHandoffPending.store(false);
+
     const auto status = FunctionPatcher_InitLibrary();
     if (status != FUNCTION_PATCHER_RESULT_SUCCESS) {
-        OSReport("[NUSBG] FunctionPatcherModule unavailable: %d\n", status);
+        OSReport("[NUSBG] FunctionPatcherModule unavailable: %d\\n", status);
     } else {
         InstallNUSspliHook();
     }
 }
 
 ON_APPLICATION_START() {
-    gNUSspliActive.store(IsNUSspli());
+    const bool nusspli = IsNUSspli();
+    gNUSspliActive.store(nusspli);
+
+    // Do not call nn_nim while NUSspli is tearing down. Wait until the next
+    // application has started, which is normally the Wii U Menu.
+    if (!nusspli && gHandoffPending.exchange(false)) {
+        OSReport("[NUSBG] NUSspli has exited; handing queued downloads to NIM\\n");
+        nusbg::HandoffQueuedDownloads();
+    }
 }
 
 ON_APPLICATION_ENDS() {
@@ -49,7 +59,9 @@ ON_APPLICATION_ENDS() {
         return;
     }
 
-    // NUSspli's actual application-end hook is the handoff point. We do not
-    // start native tasks while NUSspli is still running.
-    nusbg::HandoffQueuedDownloads();
+    // This is the actual NUSspli application-end event. Queue state remains
+    // in the plugin, but native NIM is invoked only after the next application
+    // has started so we do not call system download services during teardown.
+    gHandoffPending.store(true);
+    OSReport("[NUSBG] NUSspli ended; native handoff pending\\n");
 }

@@ -42,7 +42,7 @@ bool ResolveNim() {
     }
 
     OSDynLoad_Module module = nullptr;
-    if (OSDynLoad_Acquire(kNimRpl, &module) != OS_DYNLOAD_RESULT_SUCCESS) {
+    if (OSDynLoad_Acquire(kNimRpl, &module) != 0) {
         OSReport("[NUSBG] Could not acquire nn_nim.rpl\\n");
         return false;
     }
@@ -50,8 +50,8 @@ bool ResolveNim() {
     void *makeAddress = nullptr;
     void *registerAddress = nullptr;
 
-    if (OSDynLoad_FindExport(module, OS_DYNLOAD_EXPORT_FUNC, kMakeConfigSymbol, &makeAddress) != OS_DYNLOAD_RESULT_SUCCESS ||
-        OSDynLoad_FindExport(module, OS_DYNLOAD_EXPORT_FUNC, kRegisterTaskSymbol, &registerAddress) != OS_DYNLOAD_RESULT_SUCCESS) {
+    if (OSDynLoad_FindExport(module, OS_DYNLOAD_EXPORT_FUNC, kMakeConfigSymbol, &makeAddress) != 0 ||
+        OSDynLoad_FindExport(module, OS_DYNLOAD_EXPORT_FUNC, kRegisterTaskSymbol, &registerAddress) != 0) {
         OSReport("[NUSBG] Could not resolve native NIM task APIs\\n");
         return false;
     }

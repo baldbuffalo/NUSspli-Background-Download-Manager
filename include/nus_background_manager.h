@@ -34,6 +34,7 @@ void ClearQueue();
 std::size_t GetQueueSize();
 
 std::vector<DownloadTask> SnapshotQueue();
+bool RemoveDownload(uint64_t task_id);
 void ReplaceQueue(const std::vector<DownloadTask>& tasks);
 
 void HandoffQueuedDownloads();

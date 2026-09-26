@@ -1,23 +1,30 @@
 # Wii U NIM research notes
 
-## Confirmed
+## Confirmed from public Wii U references
 
-- Wii U system software exposes the nn::nim subsystem.
-- Cemu contains an implementation/emulation of parts of nn::nim, including title-package task concepts.
-- OSGetTitleID is available for identifying the currently running title.
+- Cafe OS contains `nn_nim.rpl`; WiiUBrew describes it as the title-installation library.
+- Aroma is a persistent plugin environment and WUPS is its plugin system.
+- Wii U system software has a dedicated NIM component rather than treating official title downloads as a generic application-level HTTP download.
 
-## Not yet treated as confirmed
+## Current implementation boundary
 
-The project does not yet have a verified real-console call sequence for:
+The plugin now identifies the NUSspli application by its title ID and invokes the handoff stage only when that application ends.
 
-- creating a title-package download task;
-- supplying TMD/ticket/content information;
-- selecting the destination device;
-- starting or resuming the task;
-- transferring an in-progress NUSspli download into native Download Management.
+The actual NIM task-creation call is still isolated behind `HandoffQueuedDownloads()`.
 
-Cemu is useful for understanding structures and semantics, but its IOSU-facing implementation must not be copied blindly as a Wii U ABI.
+## Why the NIM call is not guessed
 
-## Rule
+A working native handoff requires the exact real-console ABI:
 
-Do not add guessed ioctl IDs, guessed structure layouts, or guessed exported symbol signatures to production code.
+- exported `nn::nim` function names/signatures;
+- task/config structure layout;
+- IOSU request/command IDs where applicable;
+- TMD/ticket/content association;
+- destination device selection;
+- task state/start semantics.
+
+Cemu or other compatibility-layer implementations can reveal concepts, but they are not automatically the Wii U's callable ABI.
+
+## Next implementation step
+
+Replace the handoff stub with verified Wii U nn_nim calls and add the NUSspli-side producer that calls `QueueDownload()` for every real download task.

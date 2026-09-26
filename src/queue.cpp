@@ -39,9 +39,14 @@ std::size_t GetQueueSize() {
     return gQueue.size();
 }
 
-void HandoffQueuedDownloads() {
-    // Native NIM handoff is intentionally not implemented until the real ABI
-    // and request structures are verified.
+std::vector<DownloadTask> SnapshotQueue() {
+    std::lock_guard<std::mutex> lock(gQueueMutex);
+    return gQueue;
+}
+
+void ReplaceQueue(const std::vector<DownloadTask>& tasks) {
+    std::lock_guard<std::mutex> lock(gQueueMutex);
+    gQueue = tasks;
 }
 
 } // namespace nusbg

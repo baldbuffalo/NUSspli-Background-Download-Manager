@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7.0.1
 
       - name: Build with Wii U toolchain
         run: |
@@ -17,7 +17,7 @@ jobs:
           docker run --rm -v "$PWD:/project" nusbg-builder make
 
       - name: Upload WPS
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: NUSspliBackgroundDownloadManager
           path: NUSspliBackgroundDownloadManager.wps

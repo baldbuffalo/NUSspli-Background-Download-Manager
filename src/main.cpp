@@ -7,6 +7,8 @@
 
 #include <atomic>
 
+extern bool InstallNUSspliHook();
+
 namespace {
 
 constexpr uint64_t kNUSspliTitleId = 0x0005000010155373ULL;
@@ -36,6 +38,8 @@ INITIALIZE_PLUGIN() {
     const auto status = FunctionPatcher_InitLibrary();
     if (status != FUNCTION_PATCHER_RESULT_SUCCESS) {
         OSReport("[NUSBG] FunctionPatcherModule unavailable: %d\\n", status);
+    } else {
+        InstallNUSspliHook();
     }
 }
 
